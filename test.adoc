@@ -1,0 +1,69 @@
+== 概述
+
+该项目使用 https://cloud.spring.io/spring-cloud-open-service-broker/[Spring Cloud Open Service Broker]  框架实现了一个遵循 https://www.openservicebrokerapi.org/[Open Service Broker API] 的vertica service broker（服务代理）。它可以实现PAAS平台多租户对Vertica数据库集群的资源分配和资源隔离及管理。
+它可以部署到 Cloud Foundry 或 Kubernetes兼容的PAAS平台，并且可以注册为任一平台的服务代理。
+
+== 兼容性
+
+* https://projects.spring.io/spring-framework/[Spring 框架] 5.x
+* https://projects.spring.io/spring-boot/[Spring Boot] 2.2.x
+* https://cloud.spring.io/spring-cloud-open-service-broker/[Spring Cloud Open Service Broker] 2.1.x
+
+== 开始
+
+该服务代理管理vertica集群服务的实例。
+
+当服务实例为 https://github.com/openservicebrokerapi/servicebroker/blob/v2.15/spec.md#provisioning[provisioned] 时，会在内存中分配一个新的数据结构。
+
+创建 https://github.com/openservicebrokerapi/servicebroker/blob/v2.15/spec.md#credentials[service binding] 时，绑定凭据中会提供 URL 和基本身份验证凭据。vertica实例 URL 和凭据可用于添加、检索、删除和列出vertica实例。为每个服务绑定生成唯一的凭据。
+
+
+== 功能
+
+本项目实现PaaS平台接入Vertica时要求的相关接口功能，主要接口有：获取服务列表、创建服务实例、更新服务实例、绑定服务实例、解除绑定服务实例、删除服务实例、查询上一次操作状态、查询服务实例等。
+
+1.	**获取服务**
+获取服务接口用于列举所有租户及其类型、资源等基本信息，获取服务列表接口可以使接口调用者了解已有的租户信息与当前Vertica服务资源情况。
+-	获取数据库信息：获取指定数据库信息，包含数据库版本、数据库名称、当前数据库容量、节点数量等信息。
+-	获取集群节点信息：获取指定数据库集群所有节点信息，包含节点主机IP、主机名、数据盘使用率。
+-	获取数据库schema信息：获取指定数据库已有schema信息，以及获取指定数据库租户基本信息，含用户名、默认资源池、空闲会话断开时间、数据库会话个数限制等信息。
+2.	**创建服务实例**
+创建服务实例管理可以对Vertica资源进行统一的规划和管理。在创建服务实例接口中能够完成创建数据库租户的相关操作，它可以通过以下功能来设置Vertica内部的租户属性：
+-	创建资源池（resource pool）：在指定数据库中创建资源池，可以设置资源池名称、初始内存、最大可用内存、单个query可用最大内存，计划并发数、最大并发数、query允许运行最大时长以及排队时长和资源申请优先级。
+-	创建数据库模式（schema）：在指定数据库中创建数据库schema，同时可以指定新创建schema是否具有继承权限。
+-	创建数据库租户（user）：在指定数据库中创建数据库用户，同时可以在创建时指定用户的最大会话数限制和空闲会话释放时长。
+3.	**更新服务实例**
+更新服务实例管理可以对已存在或已发布的服务实例进行重新规划和管理，能够对已存在的Vertica内部的租户属性进行变更操作。
+通过本接口来实现对Vertica租户的属性变更。本接口可能需要实现的内容如下：
+-	修改资源池（resource pool）：修改指定资源池参数，可以设置资源池名称、初始内存、最大可用内存、单个query可用最大内存，计划并发数、最大并发数、query允许运行最大时长以及排队时长和资源申请优先级。
+-	修改数据库模式（schema）：修改数据库schema信息名称和schema继承权限规则。
+-	修改数据库租户（user）：修改指定数据库用户基本信息，包含修改用户密码，是否锁定该用户，以及该用户可用资源池和可以使用schema，最大会话数限制和空闲会话释放时长等配置信息。
+4.	**绑定服务实例**
+PaaS平台通过本接口来关联租户用户与数据库租户，本接口可以实现给租户用户创建(关联)一个数据库租户管理员，并只给它与租户内容(比如特定schema)的访问权限。
+绑定用户与schema之后，可以进行权限管理操作。
+5.	**解除绑定服务实例**
+PaaS平台通过本接口来撤销租户用户与数据库租户之间的关系，锁定相关的数据库用户以禁止他们继续使用数据库服务。
+6.	**删除服务实例**
+PaaS平台通过本接口来彻底删除数据库租户中的数据，释放相关资源。如果想要删除的服务实例依赖其他服务实例，或被其他服务实例依赖，那么都会被拒绝删除。这时需要先查询绑定关系，先解除绑定之后才能删除服务实例。
+7.	**查询操作状态**
+操作状态查询接口用于查询各种接口操作的状态，若操作失败，将反馈相应异常提示信息。
+8.	**查询服务实例**
+PaaS平台通过本接口来查询指定租户的状态和相关信息。
+
+
+== 构建
+
+该项目至少需要 Java 8。
+
+该项目是使用 Gradle 构建的。 https://docs.gradle.org/current/userguide/gradle_wrapper.html[Gradle wrapper] 允许您在多个平台上构建项目，即使您没有安装 Gradle；从主项目目录的根目录运行它来代替 `gradle` 命令（作为 `./gradlew`）。
+
+=== 编译项目并运行测试
+
+    ./gradlew build
+
+== 部署
+
+构建项目后，运行 docker_build.sh 脚本可以打包docker镜像。可以将其部署并注册到 兼容的PAAS平台。
+
+* 链接：deploy/cloudfoundry/README.adoc[部署到 Cloud Foundry]
+* 链接：deploy / kubernetes / README.adoc [部署到 Kubernetes]
